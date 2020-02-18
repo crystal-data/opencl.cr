@@ -206,17 +206,17 @@ module Cl
     result
   end
 
-  def set_arg(kernel : LibCL::ClKernel, item : LibCL::ClMem, index : UInt32)
-    check LibCL.cl_set_kernel_arg(kernel, index, sizeof(Pointer(Float32)), pointerof(item))
+  def set_arg(kernel : LibCL::ClKernel, item : LibCL::ClMem, index : UInt32, dtype : U.class = Float64, **options) forall U
+    check LibCL.cl_set_kernel_arg(kernel, index, sizeof(Pointer(U)), pointerof(item))
   end
 
-  def set_arg(kernel : LibCL::ClKernel, item : Int32, index : UInt32)
+  def set_arg(kernel : LibCL::ClKernel, item : Int32, index : UInt32, **options)
     check LibCL.cl_set_kernel_arg(kernel, index, sizeof(Int32), pointerof(item))
   end
 
-  def args(kernel : LibCL::ClKernel, *args)
+  def args(kernel : LibCL::ClKernel, *args, **options)
     args.each_with_index do |arg, i|
-      set_arg(kernel, arg, UInt32.new(i))
+      set_arg(kernel, arg, UInt32.new(i), **options)
     end
   end
 
