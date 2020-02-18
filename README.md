@@ -1,6 +1,9 @@
 # opencl.cr
 
-TODO: Write a description here
+This library is primarily maintained to provide necessary utilites to the
+`num.cr` numerical library, so not all features may be covered.  This library
+should however cover all basic use cases, as well as provide a lower level ability
+to implement more advanced use cases.  Feel free to submit PR's to add functionality
 
 ## Installation
 
@@ -18,13 +21,10 @@ TODO: Write a description here
 
 ```crystal
 require "opencl"
+
+device, context, queue = Cl.single_device_defaults
+puts Cl.device_name(device)
 ```
-
-TODO: Write usage instructions here
-
-## Development
-
-TODO: Write development instructions here
 
 ## Contributing
 
