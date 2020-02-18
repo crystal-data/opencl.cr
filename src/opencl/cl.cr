@@ -1,6 +1,31 @@
+# Copyright (c) 2020 Crystal Data Contributors
+#
+# MIT License
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
 require "./libcl"
 
-module ClWrapper
+module Cl
+  extend self
+
   def check(errcode : Int32)
     if errcode != 0
       raise "OpenCL Raised #{errcode}"
@@ -117,6 +142,47 @@ module ClWrapper
     {device, context, queue}
   end
 
+  def create_program(context : LibCL::ClContext, body : String) : LibCL::ClProgram
+    lines = [body.to_unsafe]
+    result = LibCL.cl_create_program_with_source(context, 1, lines, nil, out status)
+    check status
+    result
+  end
+
+  def create_program_binary(context : LibCL::ClContext, device : LibCL::ClDeviceId, body : String) : LibCL::ClProgram
+    lines = [body.to_unsafe]
+    l = body.size
+    result = LibCL.cl_create_program_with_binary(context, 1, pointerof(device), pointerof(l), lines, out binary_status, out status)
+    check status
+    result
+  end
+
+  def build_on(program : LibCL::ClProgram, devices : Array(LibCL::ClDeviceId))
+    LibCL.cl_build_program(program, UInt32.new(devices.size), devices, nil, nil, nil)
+  end
+
+  def build_on(program : LibCL::ClProgram, device : LibCL::ClDeviceId)
+    build_on(program, [device])
+  end
+
+  def create_and_build(context : LibCL::ClContext, body : String, device : LibCL::ClDeviceId) : LibCL::ClProgram
+    result = create_program(context, body)
+    build_on(result, device)
+    result
+  end
+
+  def create_and_build(context : LibCL::ClContext, body : String, devices : Array(LibCL::ClDeviceId)) : LibCL::ClProgram
+    result = create_program(context, body)
+    build_on(result, devices)
+    result
+  end
+
+  def create_and_build_binary(context : LibCL::ClContext, body : String, device : LibCL::ClDeviceId) : LibCL::ClProgram
+    result = create_program_binary(context, device, body)
+    build_on(result, device)
+    result
+  end
+
   def buffer(context : LibCL::ClContext, size : UInt64, flags : LibCL::ClMemFlags = LibCL::ClMemFlags::READ_WRITE, dtype : U.class = Float64) : LibCL::ClMem forall U
     buffer = LibCL.cl_create_buffer(context, flags, size * sizeof(U), nil, out status)
     check status
@@ -125,6 +191,85 @@ module ClWrapper
 
   def buffer_like(context : LibCL::ClContext, xs : Array(U), flags : LibCL::ClMemFlags = LibCL::ClMemFlags::READ_WRITE) : LibCL::ClMem forall U
     buffer(context, UInt64.new(xs.size), flags, dtype: U)
+  end
+
+  def build_errors(program : LibCL::ClProgram, devices : Array(LibCL::ClDeviceId)) : String
+    check LibCL.cl_get_program_build_info(program, devices[0], LibCL::ClProgramBuildInfo::PROGRAM_BUILD_LOG, 0, nil, out log_size)
+    result = Bytes.new(log_size + 1)
+    check LibCL.cl_get_program_build_info(program, devices[0], LibCL::ClProgramBuildInfo::PROGRAM_BUILD_LOG, log_size, result, nil)
+    String.new(result)
+  end
+
+  def create_kernel(program : LibCL::ClProgram, name : String) : LibCL::ClKernel
+    result = LibCL.cl_create_kernel(program, name.to_slice, out status)
+    check status
+    result
+  end
+
+  def set_arg(kernel : LibCL::ClKernel, item : LibCL::ClMem, index : UInt32)
+    check LibCL.cl_set_kernel_arg(kernel, index, sizeof(Pointer(Float32)), pointerof(item))
+  end
+
+  def set_arg(kernel : LibCL::ClKernel, item : Int32, index : UInt32)
+    check LibCL.cl_set_kernel_arg(kernel, index, sizeof(Int32), pointerof(item))
+  end
+
+  def args(kernel : LibCL::ClKernel, *args)
+    args.each_with_index do |arg, i|
+      set_arg(kernel, arg, UInt32.new(i))
+    end
+  end
+
+  def run(queue : LibCL::ClCommandQueue, kernel : LibCL::ClKernel, work : Int)
+    global_work_size = [UInt64.new(work), 0_u64, 0_u64]
+    check LibCL.cl_enqueue_nd_range_kernel(queue, kernel, 1, nil, global_work_size, nil, 0, nil, nil)
+  end
+
+  def run(queue : LibCL::ClCommandQueue, kernel : LibCL::ClKernel, total_work : Int, local_work : Int)
+    global_work_size = [UInt64.new(total_work), 0_u64, 0_u64]
+    local_work_size = [UInt64.new(local_work), 0_u64, 0_u64]
+    check LibCL.cl_enqueue_nd_range_kernel(queue, kernel, 1, nil, global_work_size, local_work_size, 0, nil, nil)
+  end
+
+  def run2d(queue : LibCL::ClCommandQueue, kernel : LibCL::ClKernel, total_work : Tuple(Int, Int))
+    a, b = total_work
+    global_work_size = [UInt64.new(a), UInt64.new(b), 0_u64]
+    check LibCL.cl_enqueue_nd_range_kernel(queue, kernel, 2, nil, global_work_size, nil, 0, nil, nil)
+  end
+
+  def run2d(queue : LibCL::ClCommandQueue, kernel : LibCL::ClKernel, total_work : Tuple(Int, Int), local_work : Tuple(Int, Int))
+    a, b = total_work
+    c, d = local_work
+    global_work_size = [UInt64.new(a), UInt64.new(b), 0_u64]
+    local_work_size = [UInt64.new(c), UInt64.new(d), 0_u64]
+    check LibCL.cl_enqueue_nd_range_kernel(queue, kernel, 2, nil, global_work_size, local_work_size, 0, nil, nil)
+  end
+
+  def run3d(queue : LibCL::ClCommandQueue, kernel : LibCL::ClKernel, total_work : Tuple(Int, Int, Int))
+    global_work_size = Array(UInt64).new(3) { |i| UInt64.new(total_work[i]) }
+    check LibCL.cl_enqueue_nd_range_kernel(queue, kernel, 3, nil, global_work_size, nil, 0, nil, nil)
+  end
+
+  def run3d(queue : LibCL::ClCommandQueue, kernel : LibCL::ClKernel, total_work : Tuple(Int, Int, Int), local_work : Tuple(Int, Int, Int))
+    global_work_size = Array(UInt64).new(3) { |i| UInt64.new(total_work[i]) }
+    local_work_size = Array(UInt64).new(3) { |i| UInt64.new(local_work[i]) }
+    check LibCL.cl_enqueue_nd_range_kernel(queue, kernel, 3, nil, global_work_size, local_work_size, 0, nil, nil)
+  end
+
+  def write(queue : LibCL::ClCommandQueue, src : Pointer(U), dest : LibCL::ClMem, size : UInt64) forall U
+    check LibCL.cl_enqueue_write_buffer(queue, dest, LibCL::CL_FALSE, 0, size, src, 0, nil, nil)
+  end
+
+  def write(queue : LibCL::ClCommandQueue, src : Array(U), dest : LibCL::ClMem) forall U
+    write(queue, src.to_unsafe, dest, UInt64.new(src.size * sizeof(U)))
+  end
+
+  def read(queue : LibCL::ClCommandQueue, dest : Pointer(U), src : LibCL::ClMem, size : Int) forall U
+    LibCL.cl_enqueue_read_buffer(queue, src, LibCL::CL_TRUE, 0, size, dest, 0, nil, nil)
+  end
+
+  def read(queue : LibCL::ClCommandQueue, dest : Array(U), src : LibCL::ClMem) forall U
+    read(queue, dest.to_unsafe, src, UInt64.new(dest.size * sizeof(U)))
   end
 
   def release_buffer(buffer : LibCL::ClMem)
@@ -145,80 +290,5 @@ module ClWrapper
 
   def release_program(program : LibCL::ClProgram)
     check LibCL.cl_release_program(program)
-  end
-
-  def create_program(context : LibCL::ClContext, body : String) : LibCL::ClProgram
-    lines = [body.to_unsafe]
-    result = LibCL.cl_create_program_with_source(context, 1, lines, nil, out status)
-    check status
-    result
-  end
-
-  def build_on(program : LibCL::ClProgram, devices : Array(LibCL::ClDeviceId))
-    LibCL.cl_build_program(program, UInt32.new(devices.size), devices, nil, nil, nil)
-  end
-
-  def build_on(program : LibCL::ClProgram, device : LibCL::ClDeviceId)
-    build_on(program, [device])
-  end
-
-  def create_and_build(context : LibCL::ClContext, body : String, device : LibCL::ClDeviceId) : LibCL::ClProgram
-    result = create_program(context, body)
-    build_on(result, device)
-    result
-  end
-
-  def create_kernel(program : LibCL::ClProgram, name : String) : LibCL::ClKernel
-    result = LibCL.cl_create_kernel(program, name.to_slice, out status)
-    check status
-    result
-  end
-
-  def build_errors(program : LibCL::ClProgram, devices : Array(LibCL::ClDeviceId)) : String
-    check LibCL.cl_get_program_build_info(program, devices[0], LibCL::ClProgramBuildInfo::PROGRAM_BUILD_LOG, 0, nil, out log_size)
-    result = Bytes.new(log_size+1)
-    check LibCL.cl_get_program_build_info(program, devices[0], LibCL::ClProgramBuildInfo::PROGRAM_BUILD_LOG, log_size, result, nil)
-    String.new(result)
-  end
-
-  def size(mem_object : LibCL::ClMem)
-    result = 0_u64
-    check LibCL.cl_get_mem_object_info(mem_object, LibCL::ClMemInfo::MEM_SIZE, sizeof(UInt64), pointerof(result), nil)
-    result
-  end
-
-  def set_arg(kernel : LibCL::ClKernel, item : LibCL::ClMem, index : UInt32)
-    check LibCL.cl_set_kernel_arg(kernel, index, sizeof(Pointer(Float32)), pointerof(item))
-  end
-
-  def set_arg(kernel : LibCL::ClKernel, item : Int32, index : UInt32)
-    check LibCL.cl_set_kernel_arg(kernel, index, sizeof(Int32), pointerof(item))
-  end
-
-  def args(kernel : LibCL::ClKernel, *args)
-    args.each_with_index do |arg, i|
-      set_arg(kernel, arg, UInt32.new(i))
-    end
-  end
-
-  def write(queue : LibCL::ClCommandQueue, src : Pointer(U), dest : LibCL::ClMem, size : UInt64) forall U
-    check LibCL.cl_enqueue_write_buffer(queue, dest, LibCL::CL_FALSE, 0, size, src, 0, nil, nil)
-  end
-
-  def write(queue : LibCL::ClCommandQueue, src : Array(U), dest : LibCL::ClMem) forall U
-    write(queue, src.to_unsafe, dest, UInt64.new(src.size * sizeof(U)))
-  end
-
-  def run(queue : LibCL::ClCommandQueue, kernel : LibCL::ClKernel, work : Int)
-    global_work_size = [UInt64.new(work), 0_u64, 0_u64]
-    check LibCL.cl_enqueue_nd_range_kernel(queue, kernel, 1, nil, global_work_size, nil, 0, nil, nil)
-  end
-
-  def read(queue : LibCL::ClCommandQueue, dest : Pointer(U), src : LibCL::ClMem, size : Int) forall U
-    LibCL.cl_enqueue_read_buffer(queue, src, LibCL::CL_TRUE, 0, size, dest, 0, nil, nil)
-  end
-
-  def read(queue : LibCL::ClCommandQueue, dest : Array(U), src : LibCL::ClMem) forall U
-    read(queue, dest.to_unsafe, src, UInt64.new(dest.size * sizeof(U)))
   end
 end

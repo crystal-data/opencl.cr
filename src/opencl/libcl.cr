@@ -1,3 +1,26 @@
+# Copyright (c) 2020 Crystal Data Contributors
+#
+# MIT License
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
 {% if flag?(:darwin) %}
   @[Link(framework: "OpenCL")]
 {% else %}
@@ -118,15 +141,15 @@ lib LibCL
   end
 
   enum ClMemInfo
-    MEM_TYPE = 0x00001100
-    MEM_FLAGS = 0x00001101
-    MEM_SIZE = 0x00001102
-    MEM_HOST_PTR = 0x00001103
-    MEM_MAP_COUNT = 0x00001104
-    MEM_REFERENCE_COUNT = 0x00001105
-    MEM_CONTEXT = 0x00001106
+    MEM_TYPE                 = 0x00001100
+    MEM_FLAGS                = 0x00001101
+    MEM_SIZE                 = 0x00001102
+    MEM_HOST_PTR             = 0x00001103
+    MEM_MAP_COUNT            = 0x00001104
+    MEM_REFERENCE_COUNT      = 0x00001105
+    MEM_CONTEXT              = 0x00001106
     MEM_ASSOCIATED_MEMOBJECT = 0x00001107
-    MEM_OFFSET = 0x00001108
+    MEM_OFFSET               = 0x00001108
   end
 
   fun cl_create_buffer = clCreateBuffer(context : ClContext, flags : ClMemFlags, size : LibC::SizeT, host_ptr : Void*, errcode_ret : ClInt*) : ClMem
@@ -138,24 +161,25 @@ lib LibCL
 
   enum ClProgramInfo
     PROGRAM_REFERENCE_COUNT = 0x00001160
-    PROGRAM_CONTEXT = 0x00001161
-    PROGRAM_NUM_DEVICES = 0x00001162
-    PROGRAM_DEVICES = 0x00001163
-    PROGRAM_SOURCE = 0x00001164
-    PROGRAM_BINARY_SIZES = 0x00001165
-    PROGRAM_BINARIES = 0x00001166
-    PROGRAM_NUM_KERNELS = 0x00001167
-    PROGRAM_KERNEL_NAMES = 0x00001168
+    PROGRAM_CONTEXT         = 0x00001161
+    PROGRAM_NUM_DEVICES     = 0x00001162
+    PROGRAM_DEVICES         = 0x00001163
+    PROGRAM_SOURCE          = 0x00001164
+    PROGRAM_BINARY_SIZES    = 0x00001165
+    PROGRAM_BINARIES        = 0x00001166
+    PROGRAM_NUM_KERNELS     = 0x00001167
+    PROGRAM_KERNEL_NAMES    = 0x00001168
   end
 
   enum ClProgramBuildInfo
-    PROGRAM_BUILD_STATUS = 0x00001181
+    PROGRAM_BUILD_STATUS  = 0x00001181
     PROGRAM_BUILD_OPTIONS = 0x00001182
-    PROGRAM_BUILD_LOG = 0x00001183
-    PROGRAM_BINARY_TYPE = 0x00001184
+    PROGRAM_BUILD_LOG     = 0x00001183
+    PROGRAM_BINARY_TYPE   = 0x00001184
   end
 
-  fun cl_create_program_with_source = clCreateProgramWithSource(context: ClContext, count : ClUint, strings : UInt8**, lengths : LibC::SizeT*, status : ClInt*) : ClProgram
+  fun cl_create_program_with_source = clCreateProgramWithSource(context : ClContext, count : ClUint, strings : UInt8**, lengths : LibC::SizeT*, status : ClInt*) : ClProgram
+  fun cl_create_program_with_binary = clCreateProgramWithBinary(context : ClContext, num_devices : ClUint, device_list : ClDeviceId*, lengths : LibC::SizeT*, binaries : UInt8**, binary_status : ClInt*, status : ClInt*)
   fun cl_build_program = clBuildProgram(program : ClProgram, num_devices : ClUint, device_list : ClDeviceId*, options : Char*, pfn_notify : (ClProgram, Void* ->), user_data : Void*) : ClInt
   fun cl_create_kernel = clCreateKernel(program : ClProgram, kernel_name : UInt8*, status : ClInt*) : ClKernel
   fun cl_get_program_info = clGetProgramInfo(program : ClProgram, param_name : ClProgramInfo, param_value_size : LibC::SizeT, param_value : Void*, param_value_size_ret : LibC::SizeT*) : ClInt
@@ -163,7 +187,7 @@ lib LibCL
   fun cl_set_kernel_arg = clSetKernelArg(kernel : ClKernel, arg_index : ClUint, arg_size : UInt64, arg_value : Void*) : ClInt
 
   CL_FALSE = 0
-  CL_TRUE = 1
+  CL_TRUE  = 1
 
   alias ClEvent = Void*
 
@@ -207,5 +231,4 @@ lib LibCL
     event_wait_list : ClEvent*,
     event : ClEvent*
   ) : ClInt
-
 end
