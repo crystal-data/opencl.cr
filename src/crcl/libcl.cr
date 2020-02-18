@@ -1,4 +1,8 @@
-@[Link("OpenCL")]
+{% if flag?(:darwin) %}
+  @[Link(framework: "OpenCL")]
+{% else %}
+  @[Link("OpenCL")]
+{% end %}
 lib LibCL
   alias ClPlatformId = Void*
   alias ClUint = UInt32
@@ -113,6 +117,95 @@ lib LibCL
     COPY_HOST_PTR  = 1 << 5
   end
 
+  enum ClMemInfo
+    MEM_TYPE = 0x00001100
+    MEM_FLAGS = 0x00001101
+    MEM_SIZE = 0x00001102
+    MEM_HOST_PTR = 0x00001103
+    MEM_MAP_COUNT = 0x00001104
+    MEM_REFERENCE_COUNT = 0x00001105
+    MEM_CONTEXT = 0x00001106
+    MEM_ASSOCIATED_MEMOBJECT = 0x00001107
+    MEM_OFFSET = 0x00001108
+  end
+
   fun cl_create_buffer = clCreateBuffer(context : ClContext, flags : ClMemFlags, size : LibC::SizeT, host_ptr : Void*, errcode_ret : ClInt*) : ClMem
   fun cl_release_mem_object = clReleaseMemObject(memobj : ClMem) : ClInt
+  fun cl_get_mem_object_info = clGetMemObjectInfo(memobj : ClMem, param_name : ClMemInfo, param_value_size : UInt64, param_value : Void*, param_value_size_ret : LibC::SizeT*) : ClInt
+
+  alias ClProgram = Void*
+  alias ClKernel = Void*
+
+  enum ClProgramInfo
+    PROGRAM_REFERENCE_COUNT = 0x00001160
+    PROGRAM_CONTEXT = 0x00001161
+    PROGRAM_NUM_DEVICES = 0x00001162
+    PROGRAM_DEVICES = 0x00001163
+    PROGRAM_SOURCE = 0x00001164
+    PROGRAM_BINARY_SIZES = 0x00001165
+    PROGRAM_BINARIES = 0x00001166
+    PROGRAM_NUM_KERNELS = 0x00001167
+    PROGRAM_KERNEL_NAMES = 0x00001168
+  end
+
+  enum ClProgramBuildInfo
+    PROGRAM_BUILD_STATUS = 0x00001181
+    PROGRAM_BUILD_OPTIONS = 0x00001182
+    PROGRAM_BUILD_LOG = 0x00001183
+    PROGRAM_BINARY_TYPE = 0x00001184
+  end
+
+  fun cl_create_program_with_source = clCreateProgramWithSource(context: ClContext, count : ClUint, strings : UInt8**, lengths : LibC::SizeT*, status : ClInt*) : ClProgram
+  fun cl_build_program = clBuildProgram(program : ClProgram, num_devices : ClUint, device_list : ClDeviceId*, options : Char*, pfn_notify : (ClProgram, Void* ->), user_data : Void*) : ClInt
+  fun cl_create_kernel = clCreateKernel(program : ClProgram, kernel_name : UInt8*, status : ClInt*) : ClKernel
+  fun cl_get_program_info = clGetProgramInfo(program : ClProgram, param_name : ClProgramInfo, param_value_size : LibC::SizeT, param_value : Void*, param_value_size_ret : LibC::SizeT*) : ClInt
+  fun cl_get_program_build_info = clGetProgramBuildInfo(program : ClProgram, device : ClDeviceId, param_name : ClProgramBuildInfo, param_value_size : LibC::SizeT, param_value : Void*, param_value_size_ret : LibC::SizeT*) : ClInt
+  fun cl_set_kernel_arg = clSetKernelArg(kernel : ClKernel, arg_index : ClUint, arg_size : UInt64, arg_value : Void*) : ClInt
+
+  CL_FALSE = 0
+  CL_TRUE = 1
+
+  alias ClEvent = Void*
+
+  fun cl_enqueue_write_buffer = clEnqueueWriteBuffer(
+    command_queue : ClCommandQueue,
+    buffer : ClMem,
+    blocking_write : ClInt,
+    offset : LibC::SizeT,
+    cb : LibC::SizeT,
+    ptr : Void*,
+    num_events_in_wait_list : ClUint,
+    event_wait_list : ClEvent,
+    event : ClEvent*
+  ) : ClInt
+
+  fun cl_release_context = clReleaseContext(context : ClContext) : ClInt
+  fun cl_release_queue = clReleaseCommandQueue(queue : ClCommandQueue) : ClInt
+  fun cl_release_kernel = clReleaseKernel(kernel : ClKernel) : ClInt
+  fun cl_release_program = clReleaseProgram(program : ClProgram) : ClInt
+
+  fun cl_enqueue_nd_range_kernel = clEnqueueNDRangeKernel(
+    command_queue : ClCommandQueue,
+    kernel : ClKernel,
+    work_dim : ClUint,
+    global_work_offset : LibC::SizeT*,
+    global_work_size : LibC::SizeT*,
+    local_work_size : LibC::SizeT*,
+    num_events_in_wait_list : ClUint,
+    event_wait_list : ClEvent*,
+    event : ClEvent*
+  ) : ClInt
+
+  fun cl_enqueue_read_buffer = clEnqueueReadBuffer(
+    queue : ClCommandQueue,
+    buffer : ClMem,
+    blocking_read : ClInt,
+    offset : UInt64,
+    cb : UInt64,
+    ptr : Void*,
+    num_waiting : UInt64,
+    event_wait_list : ClEvent*,
+    event : ClEvent*
+  ) : ClInt
+
 end

@@ -123,7 +123,102 @@ module ClWrapper
     buffer
   end
 
+  def buffer_like(context : LibCL::ClContext, xs : Array(U), flags : LibCL::ClMemFlags = LibCL::ClMemFlags::READ_WRITE) : LibCL::ClMem forall U
+    buffer(context, UInt64.new(xs.size), flags, dtype: U)
+  end
+
   def release_buffer(buffer : LibCL::ClMem)
     check LibCL.cl_release_mem_object(buffer)
+  end
+
+  def release_queue(queue : LibCL::ClCommandQueue)
+    check LibCL.cl_release_queue(queue)
+  end
+
+  def release_context(context : LibCL::ClContext)
+    check LibCL.cl_release_context(context)
+  end
+
+  def release_kernel(kernel : LibCL::ClKernel)
+    check LibCL.cl_release_kernel(kernel)
+  end
+
+  def release_program(program : LibCL::ClProgram)
+    check LibCL.cl_release_program(program)
+  end
+
+  def create_program(context : LibCL::ClContext, body : String) : LibCL::ClProgram
+    lines = [body.to_unsafe]
+    result = LibCL.cl_create_program_with_source(context, 1, lines, nil, out status)
+    check status
+    result
+  end
+
+  def build_on(program : LibCL::ClProgram, devices : Array(LibCL::ClDeviceId))
+    LibCL.cl_build_program(program, UInt32.new(devices.size), devices, nil, nil, nil)
+  end
+
+  def build_on(program : LibCL::ClProgram, device : LibCL::ClDeviceId)
+    build_on(program, [device])
+  end
+
+  def create_and_build(context : LibCL::ClContext, body : String, device : LibCL::ClDeviceId) : LibCL::ClProgram
+    result = create_program(context, body)
+    build_on(result, device)
+    result
+  end
+
+  def create_kernel(program : LibCL::ClProgram, name : String) : LibCL::ClKernel
+    result = LibCL.cl_create_kernel(program, name.to_slice, out status)
+    check status
+    result
+  end
+
+  def build_errors(program : LibCL::ClProgram, devices : Array(LibCL::ClDeviceId)) : String
+    check LibCL.cl_get_program_build_info(program, devices[0], LibCL::ClProgramBuildInfo::PROGRAM_BUILD_LOG, 0, nil, out log_size)
+    result = Bytes.new(log_size+1)
+    check LibCL.cl_get_program_build_info(program, devices[0], LibCL::ClProgramBuildInfo::PROGRAM_BUILD_LOG, log_size, result, nil)
+    String.new(result)
+  end
+
+  def size(mem_object : LibCL::ClMem)
+    result = 0_u64
+    check LibCL.cl_get_mem_object_info(mem_object, LibCL::ClMemInfo::MEM_SIZE, sizeof(UInt64), pointerof(result), nil)
+    result
+  end
+
+  def set_arg(kernel : LibCL::ClKernel, item : LibCL::ClMem, index : UInt32)
+    check LibCL.cl_set_kernel_arg(kernel, index, sizeof(Pointer(Float32)), pointerof(item))
+  end
+
+  def set_arg(kernel : LibCL::ClKernel, item : Int32, index : UInt32)
+    check LibCL.cl_set_kernel_arg(kernel, index, sizeof(Int32), pointerof(item))
+  end
+
+  def args(kernel : LibCL::ClKernel, *args)
+    args.each_with_index do |arg, i|
+      set_arg(kernel, arg, UInt32.new(i))
+    end
+  end
+
+  def write(queue : LibCL::ClCommandQueue, src : Pointer(U), dest : LibCL::ClMem, size : UInt64) forall U
+    check LibCL.cl_enqueue_write_buffer(queue, dest, LibCL::CL_FALSE, 0, size, src, 0, nil, nil)
+  end
+
+  def write(queue : LibCL::ClCommandQueue, src : Array(U), dest : LibCL::ClMem) forall U
+    write(queue, src.to_unsafe, dest, UInt64.new(src.size * sizeof(U)))
+  end
+
+  def run(queue : LibCL::ClCommandQueue, kernel : LibCL::ClKernel, work : Int)
+    global_work_size = [UInt64.new(work), 0_u64, 0_u64]
+    check LibCL.cl_enqueue_nd_range_kernel(queue, kernel, 1, nil, global_work_size, nil, 0, nil, nil)
+  end
+
+  def read(queue : LibCL::ClCommandQueue, dest : Pointer(U), src : LibCL::ClMem, size : Int) forall U
+    LibCL.cl_enqueue_read_buffer(queue, src, LibCL::CL_TRUE, 0, size, dest, 0, nil, nil)
+  end
+
+  def read(queue : LibCL::ClCommandQueue, dest : Array(U), src : LibCL::ClMem) forall U
+    read(queue, dest.to_unsafe, src, UInt64.new(dest.size * sizeof(U)))
   end
 end
