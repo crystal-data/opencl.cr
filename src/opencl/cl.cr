@@ -211,7 +211,7 @@ module Cl
   end
 
   def set_arg(kernel : LibCL::ClKernel, item : Int32, index : UInt32)
-    check LibCL.cl_set_kernel_arg(kernel, index, sizeof(Pointer(Int32)), pointerof(item))
+    check LibCL.cl_set_kernel_arg(kernel, index, sizeof(Int32), pointerof(item))
   end
 
   def args(kernel : LibCL::ClKernel, *args)
