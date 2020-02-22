@@ -227,7 +227,7 @@ lib LibCL
     offset : UInt64,
     cb : UInt64,
     ptr : Void*,
-    num_waiting : UInt64,
+    num_waiting : ClUint,
     event_wait_list : ClEvent*,
     event : ClEvent*
   ) : ClInt
