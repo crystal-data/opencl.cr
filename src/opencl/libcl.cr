@@ -191,6 +191,9 @@ lib LibCL
 
   alias ClEvent = Void*
 
+  fun cl_wait_for_events = clWaitForEvents(num_events : ClUint, event_list : ClEvent*) : ClInt
+  fun cl_release_event = clReleaseEvent(event : ClEvent) : ClInt
+
   fun cl_enqueue_write_buffer = clEnqueueWriteBuffer(
     command_queue : ClCommandQueue,
     buffer : ClMem,
