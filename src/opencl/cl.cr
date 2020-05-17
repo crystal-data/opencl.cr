@@ -264,6 +264,10 @@ module Cl
     write(queue, src.to_unsafe, dest, UInt64.new(src.size * sizeof(U)))
   end
 
+  def fill(queue : LibCL::ClCommandQueue, buffer : LibCL::ClMem, value : U, size : UInt64) forall U
+    LibCL.cl_enqueue_fill_buffer(queue, buffer, pointerof(value), sizeof(U), 0, size * sizeof(U), 0, nil, nil)
+  end
+
   def read(queue : LibCL::ClCommandQueue, dest : Pointer(U), src : LibCL::ClMem, size : Int) forall U
     LibCL.cl_enqueue_read_buffer(queue, src, LibCL::CL_TRUE, 0, size, dest, 0, nil, nil)
   end

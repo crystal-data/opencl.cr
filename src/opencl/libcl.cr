@@ -234,4 +234,16 @@ lib LibCL
     event_wait_list : ClEvent*,
     event : ClEvent*
   ) : ClInt
+
+  fun cl_enqueue_fill_buffer = clEnqueueFillBuffer(
+    queue : ClCommandQueue,
+    buffer : ClMem,
+    pattern : Void*,
+    pattern_size : LibC::SizeT,
+    offset : LibC::SizeT,
+    size : LibC::SizeT,
+    num_events_in_wait_list : ClUint,
+    event_wait_list : ClEvent*,
+    event : ClEvent*
+  ) : ClInt
 end
