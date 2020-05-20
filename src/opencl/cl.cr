@@ -115,6 +115,17 @@ module Cl
     devices
   end
 
+  def get_devices(platform : LibCL::ClPlatformId, device_type) : Array(LibCL::ClDeviceId)
+    check LibCL.cl_get_device_ids(platform, device_type, 0, nil, out num_devices)
+    if num_devices == 0
+      raise "No devices found"
+    end
+
+    devices = (0...num_devices).map { Pointer(Void).malloc(1).as(LibCL::ClDeviceId) }
+    check LibCL.cl_get_device_ids(platform, device_type, num_devices, devices, nil)
+    devices
+  end
+
   def create_context(devices : Array(LibCL::ClDeviceId)) : LibCL::ClContext
     context = LibCL.cl_create_context(nil, UInt32.new(devices.size), devices, nil, nil, out status)
     check status
@@ -137,6 +148,14 @@ module Cl
   def single_device_defaults : {LibCL::ClDeviceId, LibCL::ClContext, LibCL::ClCommandQueue}
     platform = first_platform
     device = get_devices(platform)[0]
+    context = create_context([device])
+    queue = command_queue_for(context, device)
+    {device, context, queue}
+  end
+
+  def first_gpu_defaults : {LibCL::ClDeviceId, LibCL::ClContext, LibCL::ClCommandQueue}
+    platform = first_platform
+    device = get_devices(platform, LibCL::CL_DEVICE_TYPE_GPU)[0]
     context = create_context([device])
     queue = command_queue_for(context, device)
     {device, context, queue}
