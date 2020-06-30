@@ -233,6 +233,10 @@ module Cl
     check LibCL.cl_set_kernel_arg(kernel, index, sizeof(Int32), pointerof(item))
   end
 
+  def set_arg(kernel : LibCL::ClKernel, item : U, index : UInt32) forall U
+    check LibCL.cl_set_kernel_arg(kernel, index, sizeof(U), pointerof(item))
+  end
+
   def args(kernel : LibCL::ClKernel, *args)
     args.each_with_index do |arg, i|
       set_arg(kernel, arg, UInt32.new(i))
