@@ -225,7 +225,7 @@ module Cl
     result
   end
 
-  def set_arg(kernel : LibCL::ClKernel, item : LibCL::ClMem, index : UInt32) forall U
+  def set_arg(kernel : LibCL::ClKernel, item : LibCL::ClMem, index : UInt32)
     check LibCL.cl_set_kernel_arg(kernel, index, sizeof(typeof(item)), pointerof(item))
   end
 
@@ -233,8 +233,12 @@ module Cl
     check LibCL.cl_set_kernel_arg(kernel, index, sizeof(Int32), pointerof(item))
   end
 
-  def set_arg(kernel : LibCL::ClKernel, item : U, index : UInt32) forall U
-    check LibCL.cl_set_kernel_arg(kernel, index, sizeof(Pointer(U)), pointerof(item))
+  def set_arg(kernel : LibCL::ClKernel, item : Float32, index : UInt32)
+    check LibCL.cl_set_kernel_arg(kernel, index, sizeof(Float32), pointerof(item))
+  end
+
+  def set_arg(kernel : LibCL::ClKernel, item : Float64, index : UInt32)
+    check LibCL.cl_set_kernel_arg(kernel, index, sizeof(Float64), pointerof(item))
   end
 
   def args(kernel : LibCL::ClKernel, *args)
