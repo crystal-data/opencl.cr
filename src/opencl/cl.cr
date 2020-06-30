@@ -234,7 +234,7 @@ module Cl
   end
 
   def set_arg(kernel : LibCL::ClKernel, item : U, index : UInt32) forall U
-    check LibCL.cl_set_kernel_arg(kernel, index, sizeof(pointerof(U)), pointerof(item))
+    check LibCL.cl_set_kernel_arg(kernel, index, sizeof(Pointer(U)), pointerof(item))
   end
 
   def args(kernel : LibCL::ClKernel, *args)
